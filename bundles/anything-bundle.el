@@ -5,6 +5,17 @@
 
 ;;; Code:
 
+;; ignore byte-compile warnings
+(setq byte-compile-warnings '(not nresolved
+                                  free-vars
+                                  callargs
+                                  redefine
+                                  obsolete
+                                  noruntime
+                                  cl-functions
+                                  interactive-only
+                                  ))
+
 (setq make-backup-files nil)
 (menu-bar-mode -1)
 
@@ -49,7 +60,7 @@
 ;; Parens handling
 ;; Show and create matching parens automatically
 (show-paren-mode t)
-(smartparens-global-mode t)
+;;(smartparens-global-mode t)
 (show-smartparens-global-mode nil)
 (setq sp-autoescape-string-quote nil)
 ;; Do not highlight paren area
@@ -82,6 +93,19 @@
 ;; (add-hook 'c-mode-common-hook 'ac-etags-ac-setup)
 ;; (add-hook 'enh-ruby-mode-hook 'ac-etags-ac-setup)
 ;; (add-hook 'elixir-mode-hook 'ac-etags-ac-setup)
+
+;;==============================================================================
+;; Add neotree copy functionality
+;;==============================================================================
+
+(defun neotree-copy-file ()
+  (interactive)
+  (let* ((current-path (neo-buffer--get-filename-current-line))
+         (msg (format "Copy [%s] to: "
+                      (neo-path--file-short-name current-path)))
+         (to-path (read-file-name msg (file-name-directory current-path))))
+    (dired-copy-file current-path to-path t))
+  (neo-buffer--refresh t))
 
 ;;==============================================================================
 ;; Autocomplete with company-mode
@@ -173,7 +197,7 @@
 (evil-add-hjkl-bindings occur-mode 'emacs)
 
 
-;;(evil-set-initial-state 'git-commit-mode 'normal)
+(evil-set-initial-state 'git-commit-mode 'normal)
 
 (setq evil-want-C-i-jump t)
 (setq evil-want-C-u-scroll t)
@@ -183,15 +207,17 @@
 (evil-leader/set-key
   "." 'find-tag
   "t" 'projectile-find-file
+  "j" 'dumb-jump-go
+  "k" 'dumb-jump-back
   "b" 'ido-switch-buffer
   "cc" 'evilnc-comment-or-uncomment-lines
   "ag" 'projectile-ag
   "," 'switch-to-previous-buffer
-  ; "gg" 'git-gutter+:toggle
-  ; "gd" 'git-gutter+:popup-diff
-  ; "gp" 'git-gutter+:previous-hunk
-  ; "gn" 'git-gutter+:next-hunk
-  ; "gr" 'git-gutter+:revert-hunk
+  "gg" 'git-gutter-mode
+  "gd" 'git-gutter+:popup-diff
+  "gp" 'git-gutter+:previous-hunk
+  "gn" 'git-gutter+:next-hunk
+  "gr" 'git-gutter+:revert-hunk
   "gb" 'mo-git-blame-current
   "gL" 'magit-log
   "gs" 'magit-status
@@ -199,6 +225,8 @@
   "q"  'kill-buffer-and-window
   "u"  'undo-tree-visualize
   "nn" 'neotree-toggle
+  "nt" 'neotree-stretch-toggle
+  "I" 'neotree-hidden-file-toggle
   "nm" 'next-match
   "nf" 'neotree-find
   "gk" 'windmove-up
@@ -261,9 +289,9 @@ Repeated invocations toggle between the two most recently open buffers."
 (eldoc-mode 1)
 (eldoc-mode 0)
 ;; end hack
-(key-chord-define evil-insert-state-map "jk" 'evil-normal-state)
-(key-chord-define evil-insert-state-map "JK" 'evil-normal-state)
-(key-chord-define evil-insert-state-map "Jk" 'evil-normal-state)
+(key-chord-define evil-insert-state-map "kj" 'evil-normal-state)
+;;(key-chord-define evil-insert-state-map "JF" 'evil-normal-state)
+;;(key-chord-define evil-insert-state-map "Jf" 'evil-normal-state)
 
 (define-key evil-insert-state-map "j" #'cofi/maybe-exit-j)
 (define-key evil-insert-state-map "J" #'cofi/maybe-exit-J)
@@ -311,6 +339,7 @@ Repeated invocations toggle between the two most recently open buffers."
    (define-key evil-normal-state-local-map (kbd "q") 'neotree-hide)
    (define-key evil-normal-state-local-map (kbd "RET") 'neotree-enter)
          (define-key evil-normal-state-local-map (kbd "ma") 'neotree-create-node)
+         (define-key evil-normal-state-local-map (kbd "mc") 'neotree-copy-file)
          (define-key evil-normal-state-local-map (kbd "md") 'neotree-delete-node)
          (define-key evil-normal-state-local-map (kbd "r") 'neotree-refresh)
          (define-key evil-normal-state-local-map (kbd "mm") 'neotree-rename-node)
@@ -391,7 +420,10 @@ Repeated invocations toggle between the two most recently open buffers."
 
 ;; Make lines longer than 80 highlighted
 (setq whitespace-line-column 80) ;; limit line length
-(setq whitespace-style '(face lines-tail))
+(load "~/.emacs.d/vendor/column-marker.el")
+(require 'column-marker)
+(add-hook 'foo-mode-hook (lambda () (interactive) (column-marker-1 80)))
+(setq whitespace-style '(face)) ;; (setq whitespace-style '(face lines-tail)) to highlight after column
 (global-whitespace-mode t)
 
 (add-hook 'prog-mode-hook 'whitespace-mode)
@@ -404,13 +436,13 @@ Repeated invocations toggle between the two most recently open buffers."
  )
 
 ;; Git Gutter
-;;(global-git-gutter+-mode 1)
+(global-git-gutter-mode 1)
 ;; If you enable global minor mode
 ;; (require 'git-gutter)
 ;; (global-git-gutter-mode t)
 
 ;; ;; If you would like to use git-gutter.el and linum-mode
-;; (git-gutter:linum-setup)
+ (git-gutter:linum-setup)
 
 (require 'smooth-scrolling)
 (smooth-scrolling-mode t)
@@ -477,16 +509,52 @@ Repeated invocations toggle between the two most recently open buffers."
 ;     (evil-forward-word count))
 ;   (evil-move-empty-lines count))
 
-
+;; =============================================================================
+;; Custom Fira Symbols
+;; =============================================================================
+(when (window-system)
+  (set-default-font "Fira Code"))
+(let ((alist '((33 . ".\\(?:\\(?:==\\|!!\\)\\|[!=]\\)")
+               (35 . ".\\(?:###\\|##\\|_(\\|[#(?[_{]\\)")
+               (36 . ".\\(?:>\\)")
+               (37 . ".\\(?:\\(?:%%\\)\\|%\\)")
+               (38 . ".\\(?:\\(?:&&\\)\\|&\\)")
+               (42 . ".\\(?:\\(?:\\*\\*/\\)\\|\\(?:\\*[*/]\\)\\|[*/>]\\)")
+               (43 . ".\\(?:\\(?:\\+\\+\\)\\|[+>]\\)")
+               (45 . ".\\(?:\\(?:-[>-]\\|<<\\|>>\\)\\|[<>}~-]\\)")
+               (46 . ".\\(?:\\(?:\\.[.<]\\)\\|[.=-]\\)")
+               (47 . ".\\(?:\\(?:\\*\\*\\|//\\|==\\)\\|[*/=>]\\)")
+               (48 . ".\\(?:x[a-zA-Z]\\)")
+               (58 . ".\\(?:::\\|[:=]\\)")
+               (59 . ".\\(?:;;\\|;\\)")
+               (60 . ".\\(?:\\(?:!--\\)\\|\\(?:~~\\|->\\|\\$>\\|\\*>\\|\\+>\\|--\\|<[<=-]\\|=[<=>]\\||>\\)\\|[*$+~/<=>|-]\\)")
+               (61 . ".\\(?:\\(?:/=\\|:=\\|<<\\|=[=>]\\|>>\\)\\|[<=>~]\\)")
+               (62 . ".\\(?:\\(?:=>\\|>[=>-]\\)\\|[=>-]\\)")
+               (63 . ".\\(?:\\(\\?\\?\\)\\|[:=?]\\)")
+               (91 . ".\\(?:]\\)")
+               (92 . ".\\(?:\\(?:\\\\\\\\\\)\\|\\\\\\)")
+               (94 . ".\\(?:=\\)")
+               (119 . ".\\(?:ww\\)")
+               (123 . ".\\(?:-\\)")
+               (124 . ".\\(?:\\(?:|[=|]\\)\\|[=>|]\\)")
+               (126 . ".\\(?:~>\\|~~\\|[>=@~-]\\)")
+               )
+             ))
+  (dolist (char-regexp alist)
+    (set-char-table-range composition-function-table (car char-regexp)
+                          `([,(cdr char-regexp) 0 font-shape-gstring]))))
 
 ;; =============================================================================
 ;; Custom Packages
 ;; =============================================================================
 
-(load "~/.emacs.d/vendor/ujelly-theme/ujelly-theme.el")
-(load-theme 'ujelly)
+;;(load "~/.emacs.d/vendor/ujelly-theme/ujelly-theme.el")
+;;(load "~/.emacs.d/vendor/lcars-tng-theme.el")
+;;(load-theme 'lcars-tng)
+(load "~/.emacs.d/vendor/atom-one-dark-theme.el")
+(load-theme 'atom-one-dark t)
 
-(setq initial-major-mode 'elixir-mode)
+(setq initial-major-mode 'web-mode)
 (setq initial-scratch-message "# scratch")
 
 ; (let ((bg (face-attribute 'default :background)))
@@ -570,10 +638,26 @@ Repeated invocations toggle between the two most recently open buffers."
 ;;         ad-do-it)
 ;;     ad-do-it))
 (require 'jsx-mode)
-(add-to-list 'auto-mode-alist '("\\.js[x]?\\'" . jsx-mode))
+(add-to-list 'auto-mode-alist '("\\.jsx?$" . jsx-mode))
 (setq jsx-indent-level 2)
 
+;; Web Mode
+(require 'web-mode)
+(add-to-list 'auto-mode-alist '("\\.vue?$" . web-mode))
+(setq web-mode-markup-indent-offset 2)
+(setq web-mode-css-indent-offset 2)
+(setq web-mode-code-indent-offset 2)
+(setq web-mode-style-padding 2)
+(setq web-mode-script-padding 2)
 
+;; JSON Mode
+(require 'json-mode)
+
+;; ERB
+(add-to-list 'auto-mode-alist '("\\.erb?$" . web-mode))
+
+;; JS
+(add-to-list 'auto-mode-alist '("\\.js?$" . web-mode))
 
 ;; File handling
 (add-hook 'before-save-hook 'delete-trailing-whitespace)
@@ -584,9 +668,12 @@ Repeated invocations toggle between the two most recently open buffers."
 (setq-default tab-width 2)
 (setq-default c-basic-offset 2)
 (setq-default css-indent-offset 2)
+(setq-default web-mode-markup-indent-offset 2)
+(setq-default web-mode-code-indent-offset 2)
 (setq-default lisp-indent-offset 2)
 (setq-default sgml-basic-offset 2)
 (setq-default nxml-child-indent 2)
+(setq-default js-indent-level 2)
 
 ;; (add-hook 'enh-ruby-mode-hook (lambda () (setq evil-shift-width 2)))
 (add-hook 'ruby-mode-hook (lambda ()
@@ -736,7 +823,7 @@ one more than the current position."
 
   (mmm-add-classes
     '((markdown-js
-      :submode js-mode
+      :submode web-mode
       :face mmm-declaration-submode-face
       :front "^~~~\s?javascript[\n\r]"
       :back "^~~~$")))
