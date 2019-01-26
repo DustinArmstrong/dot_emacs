@@ -12,7 +12,7 @@ var
 eshell
 ido.last
 recentf
-vendor
+# vendor
 .cask
 emms
 url
